@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sprint And Relax</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-light: #f8fafc;
+        }
+        body {
+            background-color: var(--bg-light);
+            color: #1e293b;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+        
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #main-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.1s ease-out;
+            transform-origin: center center;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 40;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            background: rgba(0,0,0,0.5);
+            padding: 4px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        .zoom-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            accent-color: var(--primary);
+        }
+        .tab-active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .content-padding {
+            padding-top: 85px;
+        }
+        .btn-action {
+            transition: transform 0.1s;
+        }
+        .btn-action:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="flex items-center justify-between py-2">
+                <div>
+                    <h1 class="text-lg font-black text-blue-600 tracking-tight leading-none">Sprint And Relax</h1>
+                    <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Análisis de tiempos de velocidad</p>
+                </div>
+                <nav class="flex gap-4">
+                    <button id="tab-btn-analysis" class="py-2 text-[10px] font-black uppercase tab-active tracking-widest">Análisis</button>
+                    <button id="tab-btn-history" class="py-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">Historial</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="content-padding max-w-4xl mx-auto px-4 pb-10">
+        
+        <main id="view-analysis" class="space-y-4">
+            <!-- Ajustes rápidos -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="glass-card p-3 rounded-xl shadow-sm">
+                    <span class="text-[8px] font-black text-slate-400 uppercase block mb-1">Distancia (m)</span>
+                    <input type="number" id="race-distance" value="100" class="w-full bg-slate-100 rounded-lg py-1 px-2 font-black text-blue-600 outline-none text-sm">
+                </div>
+                <div class="glass-card p-3 rounded-xl shadow-sm">
+                    <span class="text-[8px] font-black text-slate-400 uppercase block mb-1">FPS Video</span>
+                    <select id="video-fps" class="w-auto bg-slate-100 rounded-lg py-1 px-2 font-black text-blue-600 outline-none text-sm">
+                        <option value="auto">Auto</option>
+                        <option value="30">30 fps</option>
+                        <option value="60">60 fps</option>
+                        <option value="120">120 fps (Slo-mo)</option>
+                        <option value="240">240 fps (Slo-mo)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Sección de Carga -->
+            <div id="upload-section">
+                <label class="flex items-center justify-center w-full py-6 border-2 border-dashed border-slate-300 rounded-xl bg-white cursor-pointer hover:bg-slate-50 transition-all">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <span class="text-xs text-slate-600 font-bold uppercase tracking-wider">Cargar Carrera</span>
+                    </div>
+                    <input type="file" id="video-input" class="hidden" accept="video/*">
+                </label>
+            </div>
+
+            <!-- Sección de Reproductor -->
+            <div id="player-section" class="hidden space-y-4">
+                <div id="status-banner" class="hidden bg-blue-600 text-white text-center py-1 text-[9px] rounded-full font-black uppercase tracking-widest animate-pulse">
+                    Editando Corredor <span id="editing-id"></span>
+                </div>
+                
+                <div class="video-wrapper">
+                    <video id="main-video" playsinline muted></video>
+                    
+                    <div class="zoom-controls">
+                        <div class="flex gap-1 mb-1">
+                            <button id="zoom-in" class="zoom-btn bg-blue-600">+</button>
+                            <button id="zoom-out" class="zoom-btn bg-blue-600">-</button>
+                        </div>
+                        <div class="control-grid">
+                            <div></div><button id="move-up" class="zoom-btn">↑</button><div></div>
+                            <button id="move-left" class="zoom-btn">←</button><div class="flex items-center justify-center text-[7px] text-white/50 font-bold">PAN</div><button id="move-right" class="zoom-btn">→</button>
+                            <div></div><button id="move-down" class="zoom-btn">↓</button><div></div>
+                        </div>
+                    </div>
+
+                    <div id="overlay-time" class="absolute top-3 right-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-black font-mono text-white border border-white/10">
+                        00:00.000
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <input type="range" id="video-seeker" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" min="0" step="0.001" value="0">
+                    
+                    <div class="flex justify-center items-center gap-3">
+                        <!-- Botón Eliminar Vídeo -->
+                        <button id="btn-remove-video" class="bg-white border border-slate-200 w-10 h-10 rounded-xl flex items-center justify-center text-rose-500 active:bg-rose-50 shadow-sm" title="Eliminar vídeo">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                        
+                        <button id="btn-prev-frame" class="bg-white border border-slate-200 w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 active:bg-slate-100">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z"></path></svg>
+                        </button>
+                        <button id="play-btn" class="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg active:bg-blue-700">
+                            <svg id="play-icon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M4.018 14L14.41 10 4.018 6z"></path></svg>
+                        </button>
+                        <button id="btn-next-frame" class="bg-white border border-slate-200 w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 active:bg-slate-100">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="mark-start" class="btn-action bg-emerald-500 py-3 rounded-2xl font-black text-white shadow-md flex flex-col items-center">
+                        <span class="text-sm tracking-widest">SALIDA</span>
+                        <span id="start-display" class="text-[8px] opacity-90 uppercase">00:00.000</span>
+                    </button>
+                    <button id="mark-finish" class="btn-action bg-rose-500 py-3 rounded-2xl font-black text-white shadow-md flex flex-col items-center">
+                        <span id="finish-btn-text" class="text-sm tracking-widest">META</span>
+                        <span class="text-[8px] opacity-90 uppercase">Marca corredor</span>
+                    </button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-4 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Resultados</h2>
+                        <button id="save-session-btn" class="bg-blue-600 px-4 py-1.5 rounded-full text-white text-[9px] font-black uppercase tracking-widest shadow-md">
+                            Guardar
+                        </button>
+                    </div>
+                    <div id="results-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </main>
+
+        <main id="view-history" class="hidden space-y-4">
+            <h2 class="text-xl font-black text-slate-800">Historial</h2>
+            <div id="history-container" class="space-y-4"></div>
+            <div id="history-empty" class="text-center py-10 hidden">
+                <p class="text-slate-400 text-sm italic">Sin datos guardados.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const videoInput = document.getElementById('video-input');
+        const mainVideo = document.getElementById('main-video');
+        const seeker = document.getElementById('video-seeker');
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const overlayTime = document.getElementById('overlay-time');
+        const markStartBtn = document.getElementById('mark-start');
+        const markFinishBtn = document.getElementById('mark-finish');
+        const resultsList = document.getElementById('results-list');
+        const startDisplay = document.getElementById('start-display');
+        const saveSessionBtn = document.getElementById('save-session-btn');
+        const distanceInput = document.getElementById('race-distance');
+        const fpsInput = document.getElementById('video-fps');
+        const btnRemoveVideo = document.getElementById('btn-remove-video');
+
+        let startTime = null;
+        let finishers = [];   
+        let editingIndex = null;
+        let videoActualFps = 30;
+
+        // Zoom Logic
+        let scale = 1, posX = 0, posY = 0;
+        function updateTransform() { mainVideo.style.transform = `scale(${scale}) translate(${posX}px, ${posY}px)`; }
+        document.getElementById('zoom-in').onclick = () => { scale = Math.min(5, scale + 0.5); updateTransform(); };
+        document.getElementById('zoom-out').onclick = () => { scale = Math.max(1, scale - 0.5); if(scale === 1){posX=0;posY=0;} updateTransform(); };
+        document.getElementById('move-up').onclick = () => { posY += 30/scale; updateTransform(); };
+        document.getElementById('move-down').onclick = () => { posY -= 30/scale; updateTransform(); };
+        document.getElementById('move-left').onclick = () => { posX += 30/scale; updateTransform(); };
+        document.getElementById('move-right').onclick = () => { posX -= 30/scale; updateTransform(); };
+
+        function getEffectiveTime(rawSeconds) {
+            if (fpsInput.value === 'auto') return rawSeconds;
+            const ratio = videoActualFps / parseFloat(fpsInput.value);
+            return rawSeconds * (isNaN(ratio) ? 1 : ratio);
+        }
+
+        function formatTime(seconds) {
+            const time = getEffectiveTime(seconds);
+            const mins = Math.floor(time / 60);
+            const secs = Math.floor(time % 60);
+            const ms = Math.floor((time % 1) * 1000);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        }
+
+        videoInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                mainVideo.src = URL.createObjectURL(file);
+                document.getElementById('upload-section').classList.add('hidden');
+                document.getElementById('player-section').classList.remove('hidden');
+            }
+        };
+
+        // Función para eliminar video y reiniciar estado
+        btnRemoveVideo.onclick = () => {
+            mainVideo.pause();
+            mainVideo.src = "";
+            videoInput.value = "";
+            startTime = null;
+            finishers = [];
+            startDisplay.innerText = "00:00.000";
+            updateResultsTable();
+            document.getElementById('player-section').classList.add('hidden');
+            document.getElementById('upload-section').classList.remove('hidden');
+        };
+
+        mainVideo.onloadedmetadata = () => { 
+            seeker.max = mainVideo.duration;
+            videoActualFps = 30; 
+        };
+
+        mainVideo.ontimeupdate = () => {
+            seeker.value = mainVideo.currentTime;
+            overlayTime.innerText = formatTime(mainVideo.currentTime);
+        };
+
+        seeker.oninput = () => { mainVideo.currentTime = seeker.value; overlayTime.innerText = formatTime(mainVideo.currentTime); };
+
+        playBtn.onclick = () => {
+            if (mainVideo.paused) {
+                mainVideo.play();
+                playIcon.innerHTML = '<path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z"></path>';
+            } else {
+                mainVideo.pause();
+                playIcon.innerHTML = '<path d="M4.018 14L14.41 10 4.018 6z"></path>';
+            }
+        };
+
+        const frameStep = () => 1/30;
+        document.getElementById('btn-prev-frame').onclick = () => { mainVideo.pause(); mainVideo.currentTime -= frameStep(); };
+        document.getElementById('btn-next-frame').onclick = () => { mainVideo.pause(); mainVideo.currentTime += frameStep(); };
+
+        markStartBtn.onclick = () => {
+            startTime = mainVideo.currentTime;
+            startDisplay.innerText = formatTime(startTime);
+            updateResultsTable();
+        };
+
+        markFinishBtn.onclick = () => {
+            if (editingIndex !== null) {
+                finishers[editingIndex].time = mainVideo.currentTime;
+                editingIndex = null;
+                document.getElementById('status-banner').classList.add('hidden');
+                markFinishBtn.classList.replace('bg-blue-600', 'bg-rose-500');
+                document.getElementById('finish-btn-text').innerText = "META";
+            } else {
+                finishers.push({ id: Date.now(), time: mainVideo.currentTime, name: `Corredor ${finishers.length + 1}` });
+            }
+            updateResultsTable();
+        };
+
+        function updateResultsTable() {
+            resultsList.innerHTML = '';
+            const dist = parseFloat(distanceInput.value) || 0;
+            
+            finishers.forEach((f, i) => {
+                const diff = (startTime !== null) ? getEffectiveTime(f.time) - getEffectiveTime(startTime) : 0;
+                const speed = (diff > 0 && dist > 0) ? (dist / diff * 3.6).toFixed(2) : "0.00";
+                
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-3 rounded-xl border bg-slate-50 border-slate-100";
+                div.innerHTML = `
+                    <div class="flex-1">
+                        <input type="text" value="${f.name}" data-idx="${i}" class="name-edit-input w-full bg-transparent border-none text-[10px] font-bold uppercase text-slate-500 mb-0.5 outline-none">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg font-black font-mono text-slate-800">${diff > 0 ? formatTimeSecs(diff) : '--:--.---'}</span>
+                            <span class="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-black">${speed} km/h</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button data-action="edit" data-idx="${i}" class="p-2 text-blue-500"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                        <button data-action="delete" data-id="${f.id}" class="p-2 text-slate-300"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </div>`;
+                resultsList.appendChild(div);
+            });
+        }
+
+        function formatTimeSecs(time) {
+            const mins = Math.floor(time / 60);
+            const secs = Math.floor(time % 60);
+            const ms = Math.floor((time % 1) * 1000);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        }
+
+        resultsList.onclick = (e) => {
+            const action = e.target.dataset.action;
+            if (action === 'edit') {
+                editingIndex = parseInt(e.target.dataset.idx);
+                mainVideo.currentTime = finishers[editingIndex].time;
+                document.getElementById('status-banner').classList.remove('hidden');
+                document.getElementById('editing-id').innerText = editingIndex + 1;
+                markFinishBtn.classList.replace('bg-rose-500', 'bg-blue-600');
+                document.getElementById('finish-btn-text').innerText = "OK";
+            } else if (action === 'delete') {
+                finishers = finishers.filter(f => f.id !== parseInt(e.target.dataset.id));
+                updateResultsTable();
+            }
+        };
+
+        resultsList.oninput = (e) => {
+            if (e.target.classList.contains('name-edit-input')) finishers[parseInt(e.target.dataset.idx)].name = e.target.value;
+        };
+
+        distanceInput.oninput = updateResultsTable;
+        fpsInput.onchange = () => {
+            if (startTime) startDisplay.innerText = formatTime(startTime);
+            updateResultsTable();
+        };
+
+        saveSessionBtn.onclick = () => {
+            if (finishers.length === 0 || startTime === null) return;
+            const currentDist = parseFloat(distanceInput.value) || 0;
+            const data = JSON.parse(localStorage.getItem('sprint_timer_sessions') || '[]');
+            
+            const session = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                distance: currentDist,
+                results: finishers.map(f => {
+                    const diff = getEffectiveTime(f.time) - getEffectiveTime(startTime);
+                    return { 
+                        name: f.name, 
+                        time: diff, 
+                        speed: (diff > 0 && currentDist > 0) ? (currentDist / diff * 3.6).toFixed(2) : "0.00" 
+                    };
+                })
+            };
+            data.unshift(session);
+            localStorage.setItem('sprint_timer_sessions', JSON.stringify(data));
+            
+            startTime = null; finishers = [];
+            startDisplay.innerText = '00:00.000';
+            updateResultsTable();
+            switchTab('history');
+        };
+
+        function renderHistory() {
+            const data = JSON.parse(localStorage.getItem('sprint_timer_sessions') || '[]');
+            const container = document.getElementById('history-container');
+            container.innerHTML = '';
+            if (!data.length) { document.getElementById('history-empty').classList.remove('hidden'); return; }
+            document.getElementById('history-empty').classList.add('hidden');
+            
+            data.forEach(session => {
+                const div = document.createElement('div');
+                div.className = "bg-white rounded-2xl p-4 shadow-sm border border-slate-100";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-[8px] font-bold text-blue-500 uppercase">${session.date}</p>
+                            <h3 class="font-black text-slate-800">${session.distance}m</h3>
+                        </div>
+                        <button onclick="deleteSession(${session.id})" class="text-slate-300 hover:text-rose-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </div>
+                    <div class="space-y-1">
+                        ${session.results.map(r => `
+                            <div class="flex justify-between text-[10px] border-b border-slate-50 py-1">
+                                <span class="font-bold text-slate-500">${r.name}</span>
+                                <span class="font-mono font-black">${formatTimeSecs(r.time)} (${r.speed} km/h)</span>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                container.appendChild(div);
+            });
+        }
+
+        window.deleteSession = (id) => {
+            const data = JSON.parse(localStorage.getItem('sprint_timer_sessions') || '[]').filter(s => s.id !== id);
+            localStorage.setItem('sprint_timer_sessions', JSON.stringify(data));
+            renderHistory();
+        };
+
+        function switchTab(tab) {
+            const btnA = document.getElementById('tab-btn-analysis');
+            const btnH = document.getElementById('tab-btn-history');
+            const viewA = document.getElementById('view-analysis');
+            const viewH = document.getElementById('view-history');
+            
+            if (tab === 'analysis') {
+                viewA.classList.remove('hidden'); viewH.classList.add('hidden');
+                btnA.classList.add('tab-active'); btnH.classList.remove('tab-active');
+            } else {
+                viewA.classList.add('hidden'); viewH.classList.remove('hidden');
+                btnH.classList.add('tab-active'); btnA.classList.remove('tab-active');
+                renderHistory();
+            }
+        }
+        document.getElementById('tab-btn-analysis').onclick = () => switchTab('analysis');
+        document.getElementById('tab-btn-history').onclick = () => switchTab('history');
+    </script>
+</body>
+</html>
